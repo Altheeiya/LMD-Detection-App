@@ -97,7 +97,7 @@ def main():
                             color = '#ffe6e6' # Merah muda
                         return f'background-color: {color}'
                         
-                    st.dataframe(df_display.style.applymap(color_label, subset=['HASIL_DETEKSI']))
+                    st.dataframe(df_display.style.map(color_label, subset=['HASIL_DETEKSI']))
                     
                     # Opsi Unduh Hasil
                     csv_output = df_result.to_csv(index=False).encode('utf-8')

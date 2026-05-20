@@ -98,15 +98,15 @@ def main():
                         return f'background-color: {color}'
                         
                     # Ubah baris 100 menjadi:
-st.dataframe(
-    df_display,
-    column_config={
-        "HASIL_DETEKSI": st.column_config.TextColumn(
-            "HASIL_DETEKSI",
-            help="Status deteksi anomali"
-        )
-    }
-)
+                    st.dataframe(
+                        df_display,
+                            column_config={
+                                    "HASIL_DETEKSI": st.column_config.TextColumn(
+                                        "HASIL_DETEKSI",
+                                            help="Status deteksi anomali"
+                                            )
+                                        }
+                                    )
                     
                     # Opsi Unduh Hasil
                     csv_output = df_result.to_csv(index=False).encode('utf-8')

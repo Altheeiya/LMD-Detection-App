@@ -96,13 +96,18 @@ def main():
                     # Tampilkan Data Frame Hasil
                     st.subheader("3. Detail Data Terdampak")
                     
-                    # Filter untuk memudahkan melihat anomali
-                    filter_opsi = st.selectbox("Filter Tampilan Data:", ["Tampilkan Semua", "Hanya Anomali/Serangan"])
-                    
-                    if filter_opsi == "Hanya Anomali/Serangan":
-                        df_display = df_result[df_result['HASIL_DETEKSI'] != label_map.get('0', 'Normal')]
-                    else:
+                    # Filter dinamis berdasarkan label yang sebenarnya
+                    unique_labels = list(df_result['HASIL_DETEKSI'].unique())
+                    # Build options like '0 - Normal' or '2 - LateralMovement'
+                    options = ["Tampilkan Semua"] + [f"{code} - {label_map.get(str(code), str(code))}" for code in unique_labels]
+                    filter_opsi = st.selectbox("Filter Tampilan Data:", options)
+
+                    if filter_opsi == "Tampilkan Semua":
                         df_display = df_result
+                    else:
+                        # parse kode dari pilihan (format: 'code - label')
+                        selected_code = str(filter_opsi).split(" - ")[0]
+                        df_display = df_result[df_result['HASIL_DETEKSI'] == selected_code]
                         
                     # Batasi ukuran tampilan agar tidak menyebabkan error styling besar
                     max_cells = 262144
@@ -130,6 +135,12 @@ def main():
                         file_name='hasil_deteksi_lateral_movement.csv',
                         mime='text/csv',
                     )
+
+                    # Debug: tampilkan mapping dan label unik jika diminta
+                    if st.checkbox("Tampilkan debug mapping & label unik", value=False):
+                        st.write("label_map:", label_map)
+                        st.write("Unique HASIL_DETEKSI:", df_result['HASIL_DETEKSI'].unique().tolist())
+                        st.write(df_result['HASIL_DETEKSI'].value_counts().to_dict())
     else:
         st.info("Menunggu unggahan data uji. Silakan gunakan menu di sidebar.")
 

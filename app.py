@@ -89,26 +89,25 @@ def main():
                     else:
                         df_display = df_result
                         
-                    # Beri highlight warna untuk kolom HASIL_DETEKSI
-                    def color_label(val):
-                        if val == label_mapping.get('0', 'Normal'):
-                            color = '#e6ffe6' # Hijau muda
-                        else:
-                            color = '#ffe6e6' # Merah muda
-                        return f'background-color: {color}'
-                        
-                    # Ubah baris 100 menjadi:
-                    st.dataframe(
-                        df_display,
+                    # Batasi ukuran tampilan agar tidak menyebabkan error styling besar
+                    max_cells = 262144
+                    n_cells = df_display.shape[0] * df_display.shape[1]
+
+                    if n_cells > max_cells:
+                        st.warning(f"Dataset terlalu besar untuk ditampilkan seluruhnya ({n_cells} sel). Menampilkan 100 baris teratas.")
+                        st.dataframe(df_display.head(100))
+                    else:
+                        st.dataframe(
+                            df_display,
                             column_config={
-                                    "HASIL_DETEKSI": st.column_config.TextColumn(
-                                        "HASIL_DETEKSI",
-                                            help="Status deteksi anomali"
-                                            )
-                                        }
-                                    )
-                    
-                    # Opsi Unduh Hasil
+                                "HASIL_DETEKSI": st.column_config.TextColumn(
+                                    "HASIL_DETEKSI",
+                                    help="Status deteksi anomali",
+                                )
+                            }
+                        )
+
+                    # Opsi Unduh Hasil (selalu tersedia)
                     csv_output = df_result.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         label="Unduh Laporan Deteksi (CSV)",

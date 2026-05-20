@@ -31,6 +31,11 @@ def main():
         st.error(f"Gagal memuat model atau artifak: {e}")
         return
 
+    if "df_result" not in st.session_state:
+        st.session_state["df_result"] = None
+    if "df_input" not in st.session_state:
+        st.session_state["df_input"] = None
+
     # Normalisasi label_mapping: pastikan mapping dari numeric string -> label name
     # Bisa jadi file memiliki format {"0": "Normal"} atau {"Normal": 0}
     if all(k.isdigit() for k in label_mapping.keys()):
@@ -55,6 +60,7 @@ def main():
     if uploaded_file is not None:
         st.subheader("1. Pratinjau Data Input")
         df_input = pd.read_csv(uploaded_file)
+        st.session_state["df_input"] = df_input
         st.dataframe(df_input.head(10))
         
         # Validasi Kolom
@@ -78,71 +84,72 @@ def main():
                     # Gabungkan hasil ke dataframe asli
                     df_result = df_input.copy()
                     df_result['HASIL_DETEKSI'] = predicted_labels
+                    st.session_state["df_result"] = df_result
                     
                     st.success("Deteksi Selesai!")
-                    
-                    # Tampilkan metrik ringkasan
-                    st.subheader("2. Ringkasan Hasil Deteksi")
-                    
-                    col1, col2, col3 = st.columns(3)
-                    total_data = len(df_result)
-                    normal_count = (df_result['HASIL_DETEKSI'] == label_map.get('0', 'Normal')).sum()
-                    anomaly_count = total_data - normal_count
-                    
-                    col1.metric("Total Aktivitas (Baris)", total_data)
-                    col2.metric("Aktivitas Normal", normal_count)
-                    col3.metric("Indikasi Serangan/Anomali", anomaly_count)
-                    
-                    # Tampilkan Data Frame Hasil
-                    st.subheader("3. Detail Data Terdampak")
-                    
-                    # Filter dinamis berdasarkan label yang sebenarnya
-                    unique_labels = list(df_result['HASIL_DETEKSI'].unique())
-                    # Build options like '0 - Normal' or '2 - LateralMovement'
-                    options = ["Tampilkan Semua"] + [f"{code} - {label_map.get(str(code), str(code))}" for code in unique_labels]
-                    filter_opsi = st.selectbox("Filter Tampilan Data:", options)
-
-                    if filter_opsi == "Tampilkan Semua":
-                        df_display = df_result
-                    else:
-                        # parse kode dari pilihan (format: 'code - label')
-                        selected_code = str(filter_opsi).split(" - ")[0]
-                        df_display = df_result[df_result['HASIL_DETEKSI'] == selected_code]
-                        
-                    # Batasi ukuran tampilan agar tidak menyebabkan error styling besar
-                    max_cells = 262144
-                    n_cells = df_display.shape[0] * df_display.shape[1]
-
-                    if n_cells > max_cells:
-                        st.warning(f"Dataset terlalu besar untuk ditampilkan seluruhnya ({n_cells} sel). Menampilkan 100 baris teratas.")
-                        st.dataframe(df_display.head(100))
-                    else:
-                        st.dataframe(
-                            df_display,
-                            column_config={
-                                "HASIL_DETEKSI": st.column_config.TextColumn(
-                                    "HASIL_DETEKSI",
-                                    help="Status deteksi anomali",
-                                )
-                            }
-                        )
-
-                    # Opsi Unduh Hasil (selalu tersedia)
-                    csv_output = df_result.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="Unduh Laporan Deteksi (CSV)",
-                        data=csv_output,
-                        file_name='hasil_deteksi_lateral_movement.csv',
-                        mime='text/csv',
-                    )
-
-                    # Debug: tampilkan mapping dan label unik jika diminta
-                    if st.checkbox("Tampilkan debug mapping & label unik", value=False):
-                        st.write("label_map:", label_map)
-                        st.write("Unique HASIL_DETEKSI:", df_result['HASIL_DETEKSI'].unique().tolist())
-                        st.write(df_result['HASIL_DETEKSI'].value_counts().to_dict())
     else:
         st.info("Menunggu unggahan data uji. Silakan gunakan menu di sidebar.")
+
+    df_result = st.session_state.get("df_result")
+    if df_result is not None:
+        # Tampilkan metrik ringkasan
+        st.subheader("2. Ringkasan Hasil Deteksi")
+
+        col1, col2, col3 = st.columns(3)
+        total_data = len(df_result)
+        normal_count = (df_result['HASIL_DETEKSI'] == label_map.get('0', 'Normal')).sum()
+        anomaly_count = total_data - normal_count
+
+        col1.metric("Total Aktivitas (Baris)", total_data)
+        col2.metric("Aktivitas Normal", normal_count)
+        col3.metric("Indikasi Serangan/Anomali", anomaly_count)
+
+        # Tampilkan Data Frame Hasil
+        st.subheader("3. Detail Data Terdampak")
+
+        # Filter dinamis berdasarkan label yang sebenarnya
+        unique_labels = list(df_result['HASIL_DETEKSI'].unique())
+        options = ["Tampilkan Semua"] + [f"{code} - {label_map.get(str(code), str(code))}" for code in unique_labels]
+        filter_opsi = st.selectbox("Filter Tampilan Data:", options, key="hasil_filter")
+
+        if filter_opsi == "Tampilkan Semua":
+            df_display = df_result
+        else:
+            selected_code = str(filter_opsi).split(" - ")[0]
+            df_display = df_result[df_result['HASIL_DETEKSI'] == selected_code]
+
+        # Batasi ukuran tampilan agar tidak menyebabkan error styling besar
+        max_cells = 262144
+        n_cells = df_display.shape[0] * df_display.shape[1]
+
+        if n_cells > max_cells:
+            st.warning(f"Dataset terlalu besar untuk ditampilkan seluruhnya ({n_cells} sel). Menampilkan 100 baris teratas.")
+            st.dataframe(df_display.head(100))
+        else:
+            st.dataframe(
+                df_display,
+                column_config={
+                    "HASIL_DETEKSI": st.column_config.TextColumn(
+                        "HASIL_DETEKSI",
+                        help="Status deteksi anomali",
+                    )
+                }
+            )
+
+        # Opsi Unduh Hasil (selalu tersedia)
+        csv_output = df_result.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="Unduh Laporan Deteksi (CSV)",
+            data=csv_output,
+            file_name='hasil_deteksi_lateral_movement.csv',
+            mime='text/csv',
+        )
+
+        # Debug: tampilkan mapping dan label unik jika diminta
+        if st.checkbox("Tampilkan debug mapping & label unik", value=False):
+            st.write("label_map:", label_map)
+            st.write("Unique HASIL_DETEKSI:", df_result['HASIL_DETEKSI'].unique().tolist())
+            st.write(df_result['HASIL_DETEKSI'].value_counts().to_dict())
 
 if __name__ == '__main__':
     main()

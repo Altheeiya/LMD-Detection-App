@@ -7,10 +7,10 @@ import json
 # Konfigurasi Halaman
 st.set_page_config(page_title="Dashboard Deteksi Lateral Movement", layout="wide")
 
-# Fungsi untuk memuat model dan artifak (di-cache agar cepat)
+# Fungsi untuk memuat model dan artifak 
 @st.cache_resource
 def load_artifacts():
-    model = joblib.load('model_xgboost_lmd.pkl')
+    model = joblib.load('best_model.pkl')
     
     with open('feature_names.json', 'r') as f:
         feature_names = json.load(f)

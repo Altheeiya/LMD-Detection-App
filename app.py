@@ -31,6 +31,21 @@ def main():
         st.error(f"Gagal memuat model atau artifak: {e}")
         return
 
+    # Normalisasi label_mapping: pastikan mapping dari numeric string -> label name
+    # Bisa jadi file memiliki format {"0": "Normal"} atau {"Normal": 0}
+    if all(k.isdigit() for k in label_mapping.keys()):
+        label_map = {k: v for k, v in label_mapping.items()}
+    else:
+        # invert mapping if values are numeric
+        try:
+            if all(isinstance(v, int) or (isinstance(v, str) and v.isdigit()) for v in label_mapping.values()):
+                label_map = {str(v): k for k, v in label_mapping.items()}
+            else:
+                # fallback: coerce both to strings (best-effort)
+                label_map = {str(k): str(v) for k, v in label_mapping.items()}
+        except Exception:
+            label_map = {str(k): str(v) for k, v in label_mapping.items()}
+
     # Sidebar untuk Input
     st.sidebar.header("Panel Kontrol")
     st.sidebar.write("Silakan unggah file CSV berisi fitur-fitur yang telah diekstraksi.")
@@ -58,7 +73,7 @@ def main():
                     predictions = model.predict(X_input)
                     
                     # Map angka prediksi ke label aslinya
-                    predicted_labels = [label_mapping.get(str(p), f"Class_{p}") for p in predictions]
+                    predicted_labels = [label_map.get(str(p), f"Class_{p}") for p in predictions]
                     
                     # Gabungkan hasil ke dataframe asli
                     df_result = df_input.copy()
@@ -71,7 +86,7 @@ def main():
                     
                     col1, col2, col3 = st.columns(3)
                     total_data = len(df_result)
-                    normal_count = (df_result['HASIL_DETEKSI'] == label_mapping.get('0', 'Normal')).sum()
+                    normal_count = (df_result['HASIL_DETEKSI'] == label_map.get('0', 'Normal')).sum()
                     anomaly_count = total_data - normal_count
                     
                     col1.metric("Total Aktivitas (Baris)", total_data)
@@ -85,7 +100,7 @@ def main():
                     filter_opsi = st.selectbox("Filter Tampilan Data:", ["Tampilkan Semua", "Hanya Anomali/Serangan"])
                     
                     if filter_opsi == "Hanya Anomali/Serangan":
-                        df_display = df_result[df_result['HASIL_DETEKSI'] != label_mapping.get('0', 'Normal')]
+                        df_display = df_result[df_result['HASIL_DETEKSI'] != label_map.get('0', 'Normal')]
                     else:
                         df_display = df_result
                         

@@ -97,7 +97,16 @@ def main():
                             color = '#ffe6e6' # Merah muda
                         return f'background-color: {color}'
                         
-                    st.dataframe(df_display.style.map(color_label, subset=['HASIL_DETEKSI']))
+                    # Ubah baris 100 menjadi:
+st.dataframe(
+    df_display,
+    column_config={
+        "HASIL_DETEKSI": st.column_config.TextColumn(
+            "HASIL_DETEKSI",
+            help="Status deteksi anomali"
+        )
+    }
+)
                     
                     # Opsi Unduh Hasil
                     csv_output = df_result.to_csv(index=False).encode('utf-8')

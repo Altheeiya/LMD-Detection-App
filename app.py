@@ -3,28 +3,103 @@ import pandas as pd
 import numpy as np
 import joblib
 import json
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
-# Konfigurasi Halaman
-st.set_page_config(page_title="Dashboard Deteksi Lateral Movement", layout="wide")
+# ── Konfigurasi Halaman ────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="LMD Detection System",
+    page_icon="",
+    layout="wide"
+)
 
-# Fungsi untuk memuat model dan artifak 
+# ── Custom CSS ─────────────────────────────────────────────────────────────────
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap');
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+
+    .main-header {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f2744 100%);
+        padding: 2rem 2.5rem; border-radius: 12px;
+        border: 1px solid #334155; margin-bottom: 1.5rem;
+    }
+    .main-header h1 { color: #f1f5f9; font-size: 1.8rem; font-weight: 600; margin: 0 0 0.3rem 0; letter-spacing: -0.02em; }
+    .main-header p  { color: #94a3b8; margin: 0; font-size: 0.9rem; }
+    .badge {
+        display: inline-block; background: #1d4ed8; color: #bfdbfe;
+        font-size: 0.7rem; font-weight: 600; padding: 2px 8px;
+        border-radius: 4px; margin-right: 6px; letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    .metric-card {
+        background: #1e293b; border: 1px solid #334155;
+        border-radius: 10px; padding: 1.2rem 1.5rem; text-align: center;
+    }
+    .metric-card .label { color: #94a3b8; font-size: 0.78rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+    .metric-card .value { color: #f1f5f9; font-size: 2rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+    .metric-card.danger  .value { color: #f87171; }
+    .metric-card.warning .value { color: #fbbf24; }
+    .metric-card.safe    .value { color: #34d399; }
+    .section-label {
+        color: #64748b; font-size: 0.72rem; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.08em;
+        margin: 1.5rem 0 0.6rem 0; padding-bottom: 0.4rem;
+        border-bottom: 1px solid #1e293b;
+    }
+    [data-testid="stSidebar"] { background: #0f172a; }
+    [data-testid="stSidebar"] .stMarkdown p { color: #94a3b8; font-size: 0.85rem; }
+</style>
+""", unsafe_allow_html=True)
+
+# ── Konstanta label ────────────────────────────────────────────────────────────
+LABEL_DISPLAY = {"0": "Normal", "1": "Suspicious", "2": "Lateral Movement"}
+LABEL_COLOR   = {"Normal": "#34d399", "Suspicious": "#fbbf24", "Lateral Movement": "#f87171"}
+
+# ── Load artifacts ─────────────────────────────────────────────────────────────
 @st.cache_resource
 def load_artifacts():
-    model = joblib.load('best_model.pkl')
-    
-    with open('feature_names.json', 'r') as f:
+    model = joblib.load("best_model.pkl")
+    with open("feature_names.json", "r") as f:
         feature_names = json.load(f)
-        
-    with open('label_mapping.json', 'r') as f:
+    with open("label_mapping.json", "r") as f:
         label_mapping = json.load(f)
-        
     return model, feature_names, label_mapping
 
+def resolve_label(pred, label_mapping):
+    key = str(int(pred))
+    if key in label_mapping:
+        raw = label_mapping[key]
+        return LABEL_DISPLAY.get(key, str(raw))
+    return LABEL_DISPLAY.get(key, f"Class_{int(pred)}")
+
+def make_donut(counts: dict):
+    labels = list(counts.keys())
+    sizes  = list(counts.values())
+    colors = [LABEL_COLOR.get(l, "#64748b") for l in labels]
+    fig, ax = plt.subplots(figsize=(4, 4), facecolor="none")
+    ax.pie(sizes, labels=None, colors=colors, startangle=90, counterclock=False,
+           wedgeprops=dict(width=0.52, edgecolor="#0f172a", linewidth=2))
+    ax.set_facecolor("none")
+    patches = [mpatches.Patch(color=colors[i], label=f"{labels[i]}  ({sizes[i]:,})") for i in range(len(labels))]
+    ax.legend(handles=patches, loc="center", frameon=False,
+              labelcolor="#cbd5e1", fontsize=9, handlelength=1.2)
+    fig.patch.set_alpha(0)
+    return fig
+
+# ── Main ───────────────────────────────────────────────────────────────────────
 def main():
-    st.title("Sistem Deteksi Anomali Lateral Movement")
-    st.write("Aplikasi deteksi intrusi berbasis Machine Learning (XGBoost) dan Graph Network Analysis untuk log Windows Sysmon.")
-    
-    # Load Model
+    st.markdown("""
+    <div class="main-header">
+        <div>
+            <span class="badge">XGBoost</span>
+            <span class="badge">Graph Neural Feature</span>
+            <span class="badge">Sysmon Log</span>
+        </div>
+        <h1> Lateral Movement Detection System</h1>
+        <p>Deteksi anomali berbasis Machine Learning pada log Windows Sysmon — PT Bukit Asam Tbk Unit Pelabuhan Tarahan</p>
+    </div>
+    """, unsafe_allow_html=True)
+
     try:
         model, feature_names, label_mapping = load_artifacts()
     except Exception as e:
@@ -33,123 +108,146 @@ def main():
 
     if "df_result" not in st.session_state:
         st.session_state["df_result"] = None
-    if "df_input" not in st.session_state:
-        st.session_state["df_input"] = None
 
-    # Normalisasi label_mapping: pastikan mapping dari numeric string -> label name
-    # Bisa jadi file memiliki format {"0": "Normal"} atau {"Normal": 0}
-    if all(k.isdigit() for k in label_mapping.keys()):
-        label_map = {k: v for k, v in label_mapping.items()}
-    else:
-        # invert mapping if values are numeric
-        try:
-            if all(isinstance(v, int) or (isinstance(v, str) and v.isdigit()) for v in label_mapping.values()):
-                label_map = {str(v): k for k, v in label_mapping.items()}
-            else:
-                # fallback: coerce both to strings (best-effort)
-                label_map = {str(k): str(v) for k, v in label_mapping.items()}
-        except Exception:
-            label_map = {str(k): str(v) for k, v in label_mapping.items()}
+    # ── Sidebar ────────────────────────────────────────────────────────────────
+    with st.sidebar:
+        st.markdown("###  Panel Kontrol")
+        st.markdown("Upload file CSV yang sudah berisi **59 fitur** hasil feature engineering dari notebook.")
+        uploaded_file = st.file_uploader("Upload Data Uji (CSV)", type=["csv"])
+        st.markdown("---")
+        st.markdown("**Kelas Deteksi:**")
+        for k, v in LABEL_DISPLAY.items():
+            color = LABEL_COLOR[v]
+            st.markdown(f"<span style='color:{color}'>●</span> **{v}**", unsafe_allow_html=True)
+        st.markdown("---")
+        st.markdown("**Model Info:**")
+        st.caption("Algoritma: XGBoost (multi:softprob)")
+        st.caption("Fitur: 59 (Temporal + EventID + Graph + Freq)")
+        st.caption("MCC: 0.8956 | Precision: 0.9738")
 
-    # Sidebar untuk Input
-    st.sidebar.header("Panel Kontrol")
-    st.sidebar.write("Silakan unggah file CSV berisi fitur-fitur yang telah diekstraksi.")
-    
-    uploaded_file = st.sidebar.file_uploader("Upload Data (CSV)", type=['csv'])
-    
-    if uploaded_file is not None:
-        st.subheader("1. Pratinjau Data Input")
-        df_input = pd.read_csv(uploaded_file)
-        st.session_state["df_input"] = df_input
-        st.dataframe(df_input.head(10))
-        
-        # Validasi Kolom
-        missing_cols = [col for col in feature_names if col not in df_input.columns]
-        
-        if missing_cols:
-            st.error(f"Data tidak valid! Kolom berikut hilang: {missing_cols[:5]}...")
-        else:
-            # Tombol Prediksi
-            if st.sidebar.button("Jalankan Deteksi"):
-                with st.spinner("Memproses data menggunakan XGBoost..."):
-                    # Pastikan urutan kolom sesuai dengan saat training
-                    X_input = df_input[feature_names].fillna(0)
-                    
-                    # Lakukan prediksi
-                    predictions = model.predict(X_input)
-                    
-                    # Map angka prediksi ke label aslinya
-                    predicted_labels = [label_map.get(str(p), f"Class_{p}") for p in predictions]
-                    
-                    # Gabungkan hasil ke dataframe asli
-                    df_result = df_input.copy()
-                    df_result['HASIL_DETEKSI'] = predicted_labels
-                    st.session_state["df_result"] = df_result
-                    
-                    st.success("Deteksi Selesai!")
-    else:
-        st.info("Menunggu unggahan data uji. Silakan gunakan menu di sidebar.")
+    if uploaded_file is None:
+        st.info(" Silakan upload file CSV melalui sidebar untuk memulai deteksi.")
+        return
+
+    df_input = pd.read_csv(uploaded_file)
+
+    st.markdown('<div class="section-label">1 — Pratinjau Data Input</div>', unsafe_allow_html=True)
+    st.dataframe(df_input.head(5), use_container_width=True)
+    st.caption(f"Total baris: **{len(df_input):,}** | Total kolom: **{len(df_input.columns)}**")
+
+    missing = [c for c in feature_names if c not in df_input.columns]
+    if missing:
+        st.error(f" {len(missing)} kolom tidak ditemukan: `{'`, `'.join(missing[:5])}`{'...' if len(missing) > 5 else ''}")
+        st.stop()
+
+    if st.button(" Jalankan Deteksi", type="primary"):
+        with st.spinner("Model XGBoost sedang menganalisis log..."):
+            X = df_input[feature_names].fillna(0).astype(float)
+            preds = model.predict(X)
+            try:
+                proba = model.predict_proba(X)
+            except Exception:
+                proba = np.zeros((len(preds), 3))
+
+            labels = [resolve_label(p, label_mapping) for p in preds]
+            df_result = df_input.copy()
+            df_result["HASIL_DETEKSI"]       = labels
+            df_result["CONF_Normal (%)"]     = (proba[:, 0] * 100).round(2)
+            df_result["CONF_Suspicious (%)"] = (proba[:, 1] * 100).round(2)
+            df_result["CONF_LateralMove (%)"]= (proba[:, 2] * 100).round(2)
+            st.session_state["df_result"] = df_result
+            st.success(" Deteksi selesai!")
 
     df_result = st.session_state.get("df_result")
-    if df_result is not None:
-        # Tampilkan metrik ringkasan
-        st.subheader("2. Ringkasan Hasil Deteksi")
+    if df_result is None:
+        return
 
-        col1, col2, col3 = st.columns(3)
-        total_data = len(df_result)
-        normal_count = (df_result['HASIL_DETEKSI'] == label_map.get('0', 'Normal')).sum()
-        anomaly_count = total_data - normal_count
+    counts_raw = df_result["HASIL_DETEKSI"].value_counts().to_dict()
+    total    = len(df_result)
+    n_normal = counts_raw.get("Normal", 0)
+    n_sus    = counts_raw.get("Suspicious", 0)
+    n_atk    = counts_raw.get("Lateral Movement", 0)
 
-        col1.metric("Total Aktivitas (Baris)", total_data)
-        col2.metric("Aktivitas Normal", normal_count)
-        col3.metric("Indikasi Serangan/Anomali", anomaly_count)
+    # ── Metric cards ───────────────────────────────────────────────────────────
+    st.markdown('<div class="section-label">2 — Ringkasan Hasil Deteksi</div>', unsafe_allow_html=True)
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        st.markdown(f'<div class="metric-card"><div class="label">Total Log</div><div class="value">{total:,}</div></div>', unsafe_allow_html=True)
+    with c2:
+        st.markdown(f'<div class="metric-card safe"><div class="label">Normal</div><div class="value">{n_normal:,}</div></div>', unsafe_allow_html=True)
+    with c3:
+        st.markdown(f'<div class="metric-card warning"><div class="label">Suspicious</div><div class="value">{n_sus:,}</div></div>', unsafe_allow_html=True)
+    with c4:
+        st.markdown(f'<div class="metric-card danger"><div class="label">Lateral Movement</div><div class="value">{n_atk:,}</div></div>', unsafe_allow_html=True)
 
-        # Tampilkan Data Frame Hasil
-        st.subheader("3. Detail Data Terdampak")
+    # ── Donut + interpretasi ───────────────────────────────────────────────────
+    st.markdown('<div class="section-label">3 — Distribusi Kelas Prediksi</div>', unsafe_allow_html=True)
+    ch, inf = st.columns([1, 2])
+    with ch:
+        if counts_raw:
+            st.pyplot(make_donut(counts_raw), use_container_width=True)
+    with inf:
+        st.markdown("#### Interpretasi Singkat")
+        pct_atk = n_atk / total * 100 if total else 0
+        pct_sus = n_sus / total * 100 if total else 0
+        if n_atk > 0:
+            st.error(f" Terdeteksi **{n_atk:,} log Lateral Movement** ({pct_atk:.2f}%). "
+                     f"Segera investigasi baris merah pada tabel di bawah.")
+        if n_sus > 0:
+            st.warning(f" **{n_sus:,} log Suspicious** ({pct_sus:.2f}%) memerlukan pemantauan lanjutan.")
+        if n_atk == 0 and n_sus == 0:
+            st.success(" Tidak ada indikasi ancaman pada batch log ini.")
+        st.markdown("---")
+        st.caption("Confidence score per baris tersedia di kolom `CONF_*` pada tabel di bawah.")
 
-        # Filter dinamis berdasarkan label yang sebenarnya
-        unique_labels = list(df_result['HASIL_DETEKSI'].unique())
-        options = ["Tampilkan Semua"] + [f"{code} - {label_map.get(str(code), str(code))}" for code in unique_labels]
-        filter_opsi = st.selectbox("Filter Tampilan Data:", options, key="hasil_filter")
+    # ── Tabel hasil ────────────────────────────────────────────────────────────
+    st.markdown('<div class="section-label">4 — Detail Data & Confidence Score</div>', unsafe_allow_html=True)
 
-        if filter_opsi == "Tampilkan Semua":
-            df_display = df_result
-        else:
-            selected_code = str(filter_opsi).split(" - ")[0]
-            df_display = df_result[df_result['HASIL_DETEKSI'] == selected_code]
+    filter_opt = st.selectbox(
+        "Filter tampilan:",
+        ["Semua", "Hanya Lateral Movement", "Hanya Suspicious", "Hanya Normal"]
+    )
+    filter_map = {
+        "Hanya Lateral Movement": "Lateral Movement",
+        "Hanya Suspicious":       "Suspicious",
+        "Hanya Normal":           "Normal",
+    }
+    df_show = df_result[df_result["HASIL_DETEKSI"] == filter_map[filter_opt]] if filter_opt in filter_map else df_result
 
-        # Batasi ukuran tampilan agar tidak menyebabkan error styling besar
-        max_cells = 262144
-        n_cells = df_display.shape[0] * df_display.shape[1]
+    priority = ["HASIL_DETEKSI", "CONF_Normal (%)", "CONF_Suspicious (%)", "CONF_LateralMove (%)"]
+    others   = [c for c in df_show.columns if c not in priority]
+    df_show  = df_show[priority + others].reset_index(drop=True)
 
-        if n_cells > max_cells:
-            st.warning(f"Dataset terlalu besar untuk ditampilkan seluruhnya ({n_cells} sel). Menampilkan 100 baris teratas.")
-            st.dataframe(df_display.head(100))
-        else:
-            st.dataframe(
-                df_display,
-                column_config={
-                    "HASIL_DETEKSI": st.column_config.TextColumn(
-                        "HASIL_DETEKSI",
-                        help="Status deteksi anomali",
-                    )
-                }
-            )
+    def highlight_row(row):
+        label = row["HASIL_DETEKSI"]
+        if label == "Lateral Movement":
+            return ["background-color: #450a0a; color: #fca5a5"] * len(row)
+        elif label == "Suspicious":
+            return ["background-color: #451a03; color: #fcd34d"] * len(row)
+        return [""] * len(row)
 
-        # Opsi Unduh Hasil (selalu tersedia)
-        csv_output = df_result.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="Unduh Laporan Deteksi (CSV)",
-            data=csv_output,
-            file_name='hasil_deteksi_lateral_movement.csv',
-            mime='text/csv',
-        )
+    MAX_DISPLAY = 2000
+    if len(df_show) > MAX_DISPLAY:
+        st.warning(f"Menampilkan {MAX_DISPLAY:,} dari {len(df_show):,} baris. Download untuk data lengkap.")
+        df_show = df_show.head(MAX_DISPLAY)
 
-        # Debug: tampilkan mapping dan label unik jika diminta
-        if st.checkbox("Tampilkan debug mapping & label unik", value=False):
-            st.write("label_map:", label_map)
-            st.write("Unique HASIL_DETEKSI:", df_result['HASIL_DETEKSI'].unique().tolist())
-            st.write(df_result['HASIL_DETEKSI'].value_counts().to_dict())
+    st.dataframe(df_show.style.apply(highlight_row, axis=1), use_container_width=True, height=420)
+    st.caption(
+        f"Ditampilkan: {len(df_show):,} baris | "
+        f" LM: {(df_show['HASIL_DETEKSI']=='Lateral Movement').sum():,} | "
+        f" Suspicious: {(df_show['HASIL_DETEKSI']=='Suspicious').sum():,} | "
+        f" Normal: {(df_show['HASIL_DETEKSI']=='Normal').sum():,}"
+    )
 
-if __name__ == '__main__':
+    # ── Download ───────────────────────────────────────────────────────────────
+    st.markdown('<div class="section-label">5 — Ekspor Laporan</div>', unsafe_allow_html=True)
+    csv_out = df_result.to_csv(index=False).encode("utf-8")
+    st.download_button(
+        label=" Download Laporan Deteksi Lengkap (CSV)",
+        data=csv_out,
+        file_name="laporan_deteksi_lateral_movement.csv",
+        mime="text/csv"
+    )
+
+if __name__ == "__main__":
     main()

@@ -1,0 +1,6 @@
+{
+  "source_col": "SourceIp",
+  "dest_col": "DestinationIp",
+  "eid_col": "EventID",
+  "label_col": "Label"
+}

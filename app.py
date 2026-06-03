@@ -320,7 +320,7 @@ def main():
         pct_atk = n_atk / total * 100 if total else 0
         pct_sus = n_sus / total * 100 if total else 0
         if n_atk > 0:
-            st.error(f"Terdeteksi **{n_atk:,} log Lateral Movement** ({pct_atk:.2f}%). "
+            st.error(f"Terdeteksi **{n_atk:,} log Lateral Movement** ({pct_atk:.2f}%). ")
                      
         if n_sus > 0:
             st.warning(f"**{n_sus:,} log Suspicious** ({pct_sus:.2f}%) memerlukan pemantauan lanjutan.")

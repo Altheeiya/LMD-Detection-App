@@ -48,13 +48,13 @@ st.markdown("""
 LABEL_DISPLAY = {"0": "Normal", "1": "Suspicious", "2": "Lateral Movement"}
 LABEL_COLOR   = {"Normal": "#34d399", "Suspicious": "#fbbf24", "Lateral Movement": "#f87171"}
 
-# EventID flags — sama persis dengan notebook
+# EventID flags 
 CRITICAL_LOGON = [4624, 4625, 4648, 4672]
 KERBEROS       = [4768, 4769, 4770, 4771]
 NTLM           = [4776]
 SYSMON_EVENTS  = [1, 3, 10, 11]
 
-# Graph feature column mapping — sama persis dengan notebook
+# Graph feature column mapping 
 GRAPH_COLS_SOURCE = {
     'in_degree':   'source_in_degree',
     'out_degree':  'source_out_degree',
@@ -86,7 +86,7 @@ def load_artifacts():
     return model, freq_map, graph_lookup, agg_lookup, feature_names, label_mapping, col_info
 
 
-# --- Feature engineering pipeline (cermin notebook) ---
+# --- Feature engineering pipeline ---
 def run_feature_engineering(df_raw, freq_map, graph_lookup, agg_lookup, col_info, feature_names):
     df = df_raw.copy()
 
@@ -94,7 +94,7 @@ def run_feature_engineering(df_raw, freq_map, graph_lookup, agg_lookup, col_info
     dest_col   = col_info["dest_col"]
     eid_col    = col_info["eid_col"]
 
-    # Deteksi kolom timestamp secara fleksibel
+    # Deteksi kolom timestamp
     ts_candidates = ["utctime", "systemtime", "timestamp", "datetime", "time"]
     ts_col = next((c for c in df.columns if c.lower() in ts_candidates), None)
 
@@ -239,15 +239,9 @@ def main():
         for k, v in LABEL_DISPLAY.items():
             st.markdown(f"<span style='color:{LABEL_COLOR[v]}'>●</span> **{v}**", unsafe_allow_html=True)
         st.markdown("---")
-        st.markdown("**Model Info:**")
-        st.caption(f"Algoritma: XGBoost (multi:softprob)")
-        st.caption(f"Fitur: {len(feature_names)} (Temporal + EventID + Graph + Freq)")
-        st.caption("MCC: 0.8956 | Precision: 0.9738")
-        st.markdown("---")
-        st.markdown("**Lookup Tables:**")
-        st.caption(f"Graph nodes  : {len(graph_lookup):,}")
-        st.caption(f"Agg IPs      : {len(agg_lookup):,}")
-        st.caption(f"Freq columns : {len(freq_map):,}")
+       
+        
+    
 
     if uploaded_file is None:
         st.info("Upload file CSV log Sysmon mentah melalui sidebar untuk memulai deteksi.")
@@ -340,7 +334,7 @@ def main():
         st.markdown("---")
         st.caption("Confidence score per baris tersedia di kolom CONF_* pada tabel di bawah.")
 
-    # Tabel hasil dengan identitas IP tetap terlihat
+    # Tabel hasil 
     st.markdown('<div class="section-label">4 — Detail Data & Confidence Score</div>', unsafe_allow_html=True)
 
     filter_opt = st.selectbox(
@@ -355,7 +349,7 @@ def main():
     df_show = (df_result[df_result["HASIL_DETEKSI"] == filter_map[filter_opt]]
                if filter_opt in filter_map else df_result)
 
-    # Kolom identitas di depan, lalu confidence, lalu sisanya
+    # Kolom identitas di depan, lalu confidence dll
     conf_cols = ["HASIL_DETEKSI", "CONF_Normal (%)", "CONF_Suspicious (%)", "CONF_LateralMove (%)"]
     others    = [c for c in df_show.columns if c not in conf_cols and c not in id_cols]
     df_show   = df_show[conf_cols + id_cols + others].reset_index(drop=True)
@@ -381,7 +375,7 @@ def main():
         f"Normal: {(df_show['HASIL_DETEKSI']=='Normal').sum():,}"
     )
 
-    # Download
+    # Download hasil prediksi
     st.markdown('<div class="section-label">5 — Ekspor Laporan</div>', unsafe_allow_html=True)
     csv_out = df_result.to_csv(index=False).encode("utf-8")
     st.download_button(

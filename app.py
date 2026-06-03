@@ -207,11 +207,6 @@ def make_donut(counts):
 def main():
     st.markdown("""
     <div class="main-header">
-        <div>
-            <span class="badge">XGBoost</span>
-            <span class="badge">Graph Neural Feature</span>
-            <span class="badge">Raw Sysmon Log</span>
-        </div>
         <h1>Lateral Movement Detection System</h1>
         <p>Deteksi anomali berbasis Machine Learning pada log Windows Sysmon — PT Bukit Asam Tbk Unit Pelabuhan Tarahan</p>
     </div>
@@ -232,7 +227,7 @@ def main():
     # Sidebar
     with st.sidebar:
         st.markdown("### Panel Kontrol")
-        st.markdown("Upload file CSV log Sysmon **mentah** (raw). Feature engineering akan dijalankan otomatis.")
+        st.markdown("Upload file CSV log sysmon...")
         uploaded_file = st.file_uploader("Upload Raw Log CSV", type=["csv"])
         st.markdown("---")
         st.markdown("**Kelas Deteksi:**")
@@ -326,7 +321,7 @@ def main():
         pct_sus = n_sus / total * 100 if total else 0
         if n_atk > 0:
             st.error(f"Terdeteksi **{n_atk:,} log Lateral Movement** ({pct_atk:.2f}%). "
-                     f"Segera investigasi baris merah pada tabel di bawah.")
+                     
         if n_sus > 0:
             st.warning(f"**{n_sus:,} log Suspicious** ({pct_sus:.2f}%) memerlukan pemantauan lanjutan.")
         if n_atk == 0 and n_sus == 0:

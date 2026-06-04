@@ -239,7 +239,7 @@ def main():
     
 
     if uploaded_file is None:
-        st.info("Upload file CSV log Sysmon mentah melalui sidebar untuk memulai deteksi.")
+        st.info("Upload file CSV log Sysmon melalui sidebar untuk memulai deteksi.")
         return
 
     df_raw = pd.read_csv(uploaded_file)

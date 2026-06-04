@@ -208,7 +208,7 @@ def main():
     st.markdown("""
     <div class="main-header">
         <h1>Lateral Movement Detection System</h1>
-        <p>Deteksi anomali berbasis Machine Learning pada log Windows Sysmon — PT Bukit Asam Tbk Unit Pelabuhan Tarahan</p>
+        <p>Deteksi anomali berbasis Machine Learning pada log Windows Sysmon</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -228,7 +228,7 @@ def main():
     with st.sidebar:
         st.markdown("### Panel Kontrol")
         st.markdown("Upload file CSV log sysmon...")
-        uploaded_file = st.file_uploader("Upload Raw Log CSV", type=["csv"])
+        uploaded_file = st.file_uploader("Upload Log CSV", type=["csv"])
         st.markdown("---")
         st.markdown("**Kelas Deteksi:**")
         for k, v in LABEL_DISPLAY.items():
